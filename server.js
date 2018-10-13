@@ -16,7 +16,7 @@ app.use(function(req, res, next) {
 });
 
 
-var users = require('./users.js');
+const users = require('./users.js');
 app.use('/innafor/users/', users);
 
 
