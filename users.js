@@ -17,24 +17,27 @@ router.post("/login/", async function (req, res) {
 
     let login = req.body;
 
-    let sql = `SELECT * FROM users WHERE loginname='${login.username}'`;
+    let sql = `SELECT * FROM users WHERE username='${login.username}'`;
 
 
     try {
 
         let datarows = await db.any(sql);
-        
-        console.log(datarows);
+
+
 
 
         if (datarows.length <= 0) {
-            res.status(401).send("Feil brukernavn eller passord");
+            res.status(401).send({
+                status: 401,
+                mld: "Feil brukernavn eller passord"
+            });
             return;
 
         }
 
         let user = await datarows.find(user => {
-            return login.username === user.loginname;
+            return login.username === user.username;
         });
 
 
@@ -53,13 +56,18 @@ router.post("/login/", async function (req, res) {
 
             //send logininfo + token to the client
             res.status(200).json({
-                username: user.loginname,
+                status: 200,
+                username: user.username,
                 fullname: user.fullname,
                 token: tok
             });
 
         } else {
-            res.status(401).send("Feil brukernavn eller passord");
+            res.status(401).send({
+                status: 401,
+                mld: "Feil brukernavn eller passord"
+               
+            });
         }
 
     } catch (err) {
@@ -81,7 +89,7 @@ router.post("/register/", async function (req, res) {
     let encrPassw = bcrypt.hashSync(register.password, 10); //hash the password    
 
 
-    var sql = `PREPARE insert_user (int, text, text, text) AS
+    let sql = `PREPARE insert_user (int, text, text, text) AS
                 INSERT INTO users VALUES(DEFAULT, $2, $3, $4); EXECUTE insert_user
                 (0, '${register.username}', '${encrPassw}', '${register.fullname}')`;
 
@@ -100,7 +108,7 @@ router.post("/register/", async function (req, res) {
         });
 
         //send logininfo + token to the client
-        res.status(200).json({
+        res.status(200).send({
             username: register.username,
             fullname: register.fullname,
             token: tok
@@ -123,50 +131,49 @@ router.post("/changePass/", async function (req, res) {
 
     let changePass = req.body;
 
-    //let sql = `SELECT * FROM users WHERE loginname='${login.username}'`;
+    let findUserInfo = `SELECT * FROM users WHERE username='${changePass.username}'`;
+    
+    let newEncrPassw = bcrypt.hashSync(changePass.newPass, 10); //hash the password
+    
+    let updatePassword = `UPDATE users SET password = '${newEncrPassw}' WHERE username='${changePass.username}'`;
+
+
 
 
     try {
 
-        let datarows = await db.any(sql);
-        
-        console.log(datarows);
+        let existingUser = await db.any(findUserInfo)
 
 
-        if (datarows.length <= 0) {
-            res.status(401).send("Feil brukernavn eller passord");
+        if (existingUser.length <= 0) {
+            res.status(401).send("Error");
             return;
-
         }
 
-        let user = await datarows.find(user => {
-            return login.username === user.loginname;
+
+        let user = await existingUser.find(user => {
+            return changePass.username === user.username;
         });
 
 
-        let passwordMatch = await bcrypt.compareSync(login.password, user.password);
+        let passwordMatch = await bcrypt.compareSync(changePass.oldPass, user.password);
 
 
         if (user && passwordMatch) {
-            //we have a valid user -> create the token        
-            let payload = {
-                username: datarows.loginname,
-                fullname: datarows.fullname
-            };
-            let tok = await jwt.sign(payload, secret, {
-                expiresIn: "12h"
-            });
-
-            //send logininfo + token to the client
+            db.any(updatePassword);
+            
+            
+            
             res.status(200).json({
-                username: user.loginname,
-                fullname: user.fullname,
-                token: tok
+                mld: "Passord endret"
             });
-
         } else {
-            res.status(401).send("Feil brukernavn eller passord");
+            res.status(401).json({
+                mld: "Passord stemmer ikke"
+            });
         }
+
+
 
     } catch (err) {
         res.status(500).json({

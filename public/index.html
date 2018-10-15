@@ -122,6 +122,7 @@ height: 100%;
 
 
 
+
     //Sender inn logginn info for å teste på serveren
     function loggInn() {
 
@@ -132,19 +133,21 @@ height: 100%;
 
         sendData("/innafor/users/login", data)
             .then(json => {
-                localStorage.setItem("logindata", JSON.stringify(json));
-                let getFullname = JSON.parse(localStorage.getItem("logindata")).fullname
-                console.log(localStorage);
-                output.style.color = "white";
-                output.innerHTML = "Velkommen " + getFullname;
+                if(json.status == 200 ){
+                    localStorage.setItem("logindata", JSON.stringify(json));
+                    let getUsername = JSON.parse(localStorage.getItem("logindata")).username;
+                    let getFullname = JSON.parse(localStorage.getItem("logindata")).fullname;
+                    output.style.color = "white";
+                    output.innerHTML = "Velkommen " + getFullname;
+                }else{
+                output.style.color = "red";
+                output.innerHTML = json.mld;
+                    
+                }
             })
             .catch(error => {
-                output.style.color = "red";
-                output.innerHTML = "Feil brukernavn eller passord";
                 console.log(error);
             });
-
-
 
     }
 
